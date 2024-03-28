@@ -137,10 +137,10 @@ int main(){
     elapsed_time = current_time - saved_time;
     if (verbose >= 1) std::cout << "Finish building lookup indices with " << short_chain_num_entries << " entries..." << std::endl;
     // print summary
-    std::cout << FMT_STRING(fmt::format("{:=^75}", "SUMMARY: Building Lookup indices")) << std::endl;
-    std::cout << FMT_STRING(fmt::format("Total time: {:%T}", elapsed_time)) << std::endl;
-    std::cout << FMT_STRING(fmt::format("Average time per entry: {:.05f} ms", elapsed_time.count() * 1000 / short_chain_num_entries)) << std::endl;
-    std::cout << FMT_STRING(fmt::format("{:=^75}", "")) << std::endl;
+    std::cout << fmt::format("{:=^75}", "SUMMARY: Building Lookup indices") << std::endl;
+    std::cout << fmt::format("Total time: {:%T}", elapsed_time) << std::endl;
+    std::cout << fmt::format("Average time per entry: {:.05f} ms", elapsed_time.count() * 1000 / short_chain_num_entries) << std::endl;
+    std::cout << fmt::format("{:=^75}", "") << std::endl;
 
     // set up output directory
     if (verbose >= 3) std::cout << "Start preparing output directory..." << std::endl;
