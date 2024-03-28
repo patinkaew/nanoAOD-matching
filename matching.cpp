@@ -4,11 +4,11 @@
 #include <filesystem>
 #include <iomanip>
 #include <chrono>
-#include <format>
 #include <unordered_map>
 #include <set>
 #include <cstring>
-// #include <vector>
+#include <fmt/core.h>
+#include <fmt/chrono.h>
 
 // ROOT libraries include
 #include "TFile.h"
@@ -137,10 +137,10 @@ int main(){
     elapsed_time = current_time - saved_time;
     if (verbose >= 1) std::cout << "Finish building lookup indices with " << short_chain_num_entries << " entries..." << std::endl;
     // print summary
-    //std::cout << std::format("{:=^75}", "SUMMARY: Building Lookup indices") << std::endl;
-    //std::cout << std::format("Total time: {:%T}", elapsed_time) << std::endl;
-    //std::cout << std::format("Average time per entry: {:.05f} ms", elapsed_time.count() * 1000 / short_chain_num_entries) << std::endl;
-    //std::cout << std::format("{:=^75}", "") << std::endl;
+    std::cout << fmt::format("{:=^75}", "SUMMARY: Building Lookup indices") << std::endl;
+    std::cout << fmt::format("Total time: {:%T}", elapsed_time) << std::endl;
+    std::cout << fmt::format("Average time per entry: {:.05f} ms", elapsed_time.count() * 1000 / short_chain_num_entries) << std::endl;
+    std::cout << fmt::format("{:=^75}", "") << std::endl;
 
     // set up output directory
     if (verbose >= 3) std::cout << "Start preparing output directory..." << std::endl;
@@ -193,9 +193,12 @@ int main(){
     int long_chain_num_entries_num_digits = std::to_string(long_chain_num_entries).length();
 
     //std::cout << long_chain_run.Get() << short_chain_run->Get() << std::endl;
-    return 0;
-/*
+
     //std::cout << get_tree_byte_size(out_tree) << std::endl; 
+
+    return 0;
+
+    /*
     // loop over entries and copy over to output tree
     if (verbose >= 1) std::cout << "Start looping over " << long_chain_num_entries << " entries..." << std::endl;
     saved_time = stopwatch.now();
@@ -307,7 +310,7 @@ int main(){
     // delete short_chain;
     // delete long_chain;
 
-    return 0;*/
+    return 0; */
 }
 
 // helper function implementation
