@@ -144,7 +144,7 @@ int main(){
 
     // set up output directory
     if (verbose >= 3) std::cout << "Start preparing output directory..." << std::endl;
-    out_directory = !out_directory.ends_with("/") ? out_directory : out_directory.substr(0, out_directory.length()-1); // remove tailing slash if any
+    out_directory = (out_directory[out_directory.length()-1] != '/') ? out_directory : out_directory.substr(0, out_directory.length()-1); // remove tailing slash if any
     // std::filesystem::create_directories(out_directory.c_str()); // create output directory if not exist
     if (verbose >= 3) std::cout << "Finish preparing lookup directory..." << std::endl;
     // for testing
