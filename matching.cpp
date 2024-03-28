@@ -196,9 +196,6 @@ int main(){
 
     //std::cout << get_tree_byte_size(out_tree) << std::endl; 
 
-    return 0;
-
-    /*
     // loop over entries and copy over to output tree
     if (verbose >= 1) std::cout << "Start looping over " << long_chain_num_entries << " entries..." << std::endl;
     saved_time = stopwatch.now();
@@ -261,10 +258,10 @@ int main(){
             // tqdm style
             //std::cout << std::format("{:06.02f}", elapsed_time.count());
             std::cout << "#process: " << std::setw(long_chain_num_entries_num_digits) << std::left << i_long_chain+1 << "/" << long_chain_num_entries;
-            std::cout << std::setw(11) << std::left << std::format(" ({:.03f}%)", Double_t(i_long_chain+1)/long_chain_num_entries * 100);
+            std::cout << std::setw(11) << std::left << fmt::format(" ({:.03f}%)", Double_t(i_long_chain+1)/long_chain_num_entries * 100);
             std::cout << "  #match: " << std::setw(short_chain_num_entries_num_digits) << std::right << num_match; 
-            std::cout << std::format(" ({:7.03f}%/A, {:7.03f}%/B)", Double_t(num_match)/datasetA_num_entries * 100, Double_t(num_match)/datasetB_num_entries * 100);
-            std::cout << std::format("   [{:%T}<{:%T}, {:10.02f}it/s, {:10.05f}ms/it]", elapsed_time, elapsed_time/(i_long_chain+1) * long_chain_num_entries - elapsed_time, Double_t(i_long_chain+1)/elapsed_time.count(), elapsed_time.count()/(i_long_chain+1)*1000);
+            std::cout << fmt::format(" ({:7.03f}%/A, {:7.03f}%/B)", Double_t(num_match)/datasetA_num_entries * 100, Double_t(num_match)/datasetB_num_entries * 100);
+            std::cout << fmt::format("   [{:%T}<{:%T}, {:10.02f}it/s, {:10.05f}ms/it]", elapsed_time, elapsed_time/(i_long_chain+1) * long_chain_num_entries - elapsed_time, Double_t(i_long_chain+1)/elapsed_time.count(), elapsed_time.count()/(i_long_chain+1)*1000);
             std::cout << std::endl;
             //std::cout << std::format("Processing entry {} of {} entries ({:03.02f}%) Elapsed Time: {:%T} Average time per entry: {:06.02f}% Projected Remaining Time: {:%T}", i_long_chain+1, long_chain_num_entries, double(i_long_chain+1)/long_chain_num_entries * 100, elapsed_time, elapsed_time.count(), elapsed_time/(i_long_chain+1) * long_chain_num_entries - elapsed_time) << std::endl;
         }
@@ -297,20 +294,20 @@ int main(){
     if (verbose >= 1) std::cout << "Finishing looping over " << long_chain_num_entries << " entries..." << std::endl;
     
     // print summary
-    std::cout << std::format("{:=^75}", "SUMMARY: Merging Trees") << std::endl;
-    std::cout << std::format("Total time: {:%T}", elapsed_time) << std::endl;
-    std::cout << std::format("Average time per entry: {:.05f} ms", elapsed_time.count() * 1000 / long_chain_num_entries) << std::endl;
+    std::cout << fmt::format("{:=^75}", "SUMMARY: Merging Trees") << std::endl;
+    std::cout << fmt::format("Total time: {:%T}", elapsed_time) << std::endl;
+    std::cout << fmt::format("Average time per entry: {:.05f} ms", elapsed_time.count() * 1000 / long_chain_num_entries) << std::endl;
     std::cout << "Number of matched events: " << num_match << std::endl;
     std::cout << TString::Format("Percent matched events from datasetA: %lld/%lld (%.03f%%)", num_match, datasetA_num_entries, Double_t(num_match)/datasetA_num_entries * 100) << std::endl;
     std::cout << TString::Format("Percent matched events from datasetB: %lld/%lld (%.03f%%)", num_match, datasetB_num_entries, Double_t(num_match)/datasetB_num_entries * 100) << std::endl;
-    std::cout << std::format("{:=^75}", "") << std::endl;
+    std::cout << fmt::format("{:=^75}", "") << std::endl;
 
     // delete out_tree;
     // delete out_tree_base;
     // delete short_chain;
     // delete long_chain;
 
-    return 0; */
+    return 0;
 }
 
 // helper function implementation
