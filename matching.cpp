@@ -7,8 +7,7 @@
 #include <unordered_map>
 #include <set>
 #include <cstring>
-#include <fmt/core.h>
-#include <fmt/chrono.h>
+#include <format>
 
 // ROOT libraries include
 #include "TFile.h"
@@ -38,16 +37,18 @@
 // std::string datasetA_branchname_prefix = "22Sep2023.";
 // std::string datasetB_branchname_prefix = "19Dec2023.";
 
-std::string datasetA_filelist_filename = "dataFiles_2023D_ZB.txt"; //"ZB_2023D_filelist.txt";
-std::string datasetB_filelist_filename = "hltFiles_2023D.txt"; //"AlCaJet_2023D_filelist.txt";
-std::string datasetA_branchname_prefix = "ZB.";
-std::string datasetB_branchname_prefix = "AlCa.";
+//std::string datasetA_filelist_filename = "dataFiles_2023D_ZB.txt"; //"ZB_2023D_filelist.txt";
+//std::string datasetB_filelist_filename = "hltFiles_2023D.txt"; //"AlCaJet_2023D_filelist.txt";
+//std::string datasetA_branchname_prefix = "ZB.";
+//std::string datasetB_branchname_prefix = "AlCa.";
+
+std::string datasetA_filelist_filename = "filelist1.txt";
+std::string datasetB_filelist_filename = "filelist2.txt";
+std::string datasetA_branchname_prefix = "1.";
+std::string datasetB_branchname_prefix = "2.";
 
 // output parameters
-//std::string out_directory = "output_test4";
-//std::string out_directory = "root://hip-cms-se.csc.fi:///store/user/pinkaew/matching_output_test";
 std::string out_directory = "output";
-//std::string out_filename_prefix = "merge_variation_nano";
 std::string out_filename_prefix = "merge_nano";
 UInt_t out_file_index = 1;
 Long64_t out_tree_max_size = 500000000LL; // 500 MB before compression
@@ -59,17 +60,26 @@ int verbose = 3;
 float print_every_percent = 0.1;
 
 // helper function defintion
-TChain* build_chain(std::string filelist_filename);
+TChain* build_chain(std::string filelist_filename, int& num_files);
 void* allocate_memory_from_leaf(const char* leaf_type_name, bool singleton, Int_t length);
 void append_branches_from_tree(TTree *src_tree, TTree *dst_tree, std::unordered_map<std::string, void*>& data_addresses, const std::string& prefix);
 void reallocate_memory_if_any(TTree *src_tree, TTree *dst_tree, std::unordered_map<std::string, void*>& data_addresses, const std::string& prefix);
 void deallocate_memory_from_leaf(const char* leaf_type_name, void* addr);
 Long64_t get_tree_byte_size(TTree* tree);
 
+void match_trees_no_merged();
+void match_trees_merged();
+
 // main
-int main(){
+int main() {
     ROOT::DisableImplicitMT();
-    
+
+    match_trees_no_merged();
+
+    return 0;
+}
+
+void match_trees_no_merged() {
     if (verbose >= 2) std::cout << "Start setting up..." << std::endl;
     // stop watch
     std::chrono::steady_clock stopwatch;
@@ -79,8 +89,10 @@ int main(){
 
     // setup chains
     if (verbose >= 2) std::cout << "Start building input chains..." << std::endl;
-    TChain *short_chain = build_chain(datasetA_filelist_filename);
-    TChain *long_chain = build_chain(datasetB_filelist_filename);
+    int short_chain_num_files = 0;
+    int long_chain_num_files = 0;
+    TChain *short_chain = build_chain(datasetA_filelist_filename, short_chain_num_files);
+    TChain *long_chain = build_chain(datasetB_filelist_filename, long_chain_num_files);
     std::string short_chain_branchname_prefix = datasetA_branchname_prefix;
     std::string long_chain_branchname_prefix = datasetB_branchname_prefix;
     Long64_t short_chain_num_entries = short_chain->GetEntries();
@@ -94,9 +106,9 @@ int main(){
         if (verbose >= 3) std::cout << "Swapping input chains" << std::endl;
         std::swap(short_chain, long_chain);
         std::swap(short_chain_branchname_prefix, long_chain_branchname_prefix);
+        std::swap(short_chain_num_files, long_chain_num_files);
         std::swap(short_chain_num_entries, long_chain_num_entries);
-        datasetA_num_entries = long_chain_num_entries;
-        datasetB_num_entries = short_chain_num_entries;
+        std::swap(datasetA_num_entries, datasetB_num_entries);
     }
 
     // set active branches
@@ -118,11 +130,7 @@ int main(){
     short_chain->SetBranchStatus("*", true);
     long_chain->SetBranchStatus("*", true);
 
-    // reserve memory so we can use to build out_tree
-    // short_chain->GetEntry(0);
-    // long_chain->GetEntry(0);
-
-    // set run and event branch to active
+    // set run and event branch to active since these are used for indexing
     short_chain->SetBranchStatus("run", true); 
     short_chain->SetBranchStatus("event", true); 
     long_chain->SetBranchStatus("run", true); 
@@ -137,10 +145,194 @@ int main(){
     elapsed_time = current_time - saved_time;
     if (verbose >= 1) std::cout << "Finish building lookup indices with " << short_chain_num_entries << " entries..." << std::endl;
     // print summary
-    std::cout << fmt::format("{:=^75}", "SUMMARY: Building Lookup indices") << std::endl;
-    std::cout << fmt::format("Total time: {:%T}", elapsed_time) << std::endl;
-    std::cout << fmt::format("Average time per entry: {:.05f} ms", elapsed_time.count() * 1000 / short_chain_num_entries) << std::endl;
-    std::cout << fmt::format("{:=^75}", "") << std::endl;
+    std::cout << std::format("{:=^75}", "SUMMARY: Building Lookup indices") << std::endl;
+    std::cout << std::format("Total time: {:%T}", elapsed_time) << std::endl;
+    std::cout << std::format("Average time per entry: {:.05f} ms", elapsed_time.count() * 1000 / short_chain_num_entries) << std::endl;
+    std::cout << std::format("{:=^75}", "") << std::endl;
+
+    // set up output directory
+    if (verbose >= 3) std::cout << "Start preparing output directory..." << std::endl;
+    out_directory = (out_directory[out_directory.length()-1] != '/') ? out_directory : out_directory.substr(0, out_directory.length()-1); // remove tailing slash if any
+    std::filesystem::create_directories(out_directory.c_str()); // create output directory if not exist
+    if (verbose >= 3) std::cout << "Finish preparing output directory..." << std::endl;
+    // for testing
+    //int max_entries = 100;
+
+    // set up reader
+    if (verbose >= 2) std::cout << "Start building treereader..." << std::endl;
+    TTreeReader long_chain_reader(long_chain);
+    // long_chain_reader.SetEntriesRange(0, max_entries);
+    TTreeReaderValue<UInt_t> long_chain_run(long_chain_reader, "run");
+    TTreeReaderValue<ULong64_t> long_chain_event_number(long_chain_reader, "event");
+    //TTreeReaderValue<Float_t> large_chain_njet(large_chain_reader, "MET_pt");
+    if (verbose >= 2) std::cout << "Finish building treereader..." << std::endl;
+
+    TTreeReader short_chain_reader(short_chain);
+    //TTreeReaderValue<UInt_t> *short_chain_run = new TTreeReaderValue<UInt_t>(short_chain_reader, "run");
+    //TTreeReaderValue<ULong64_t> *short_chain_event_number = new TTreeReaderValue<ULong64_t>(short_chain_reader, "event");
+
+    // clone for out trees
+    if (verbose >= 2) std::cout << "Start building output trees..." << std::endl;
+    //auto out_long_tree = long_chain->GetTree()->CloneTree(0);
+    //auto out_short_tree = short_chain->GetTree()->CloneTree(0);
+    auto out_long_tree = long_chain->CloneTree(0);
+    out_long_tree->SetName((long_chain_branchname_prefix + "Events").c_str());
+    auto out_short_tree = short_chain->CloneTree(0);
+    out_short_tree->SetName((short_chain_branchname_prefix + "Events").c_str());
+    if (verbose >= 2) std::cout << "Finish building output trees..." << std::endl;
+
+    // loop parameter
+    Long64_t num_match = 0;
+    Long64_t out_tree_current_num_entries = 0;
+    Long64_t out_tree_current_size = 0;
+
+    Long64_t print_every_entries = Long64_t(print_every_percent * long_chain_num_entries / 100);
+    int short_chain_num_entries_num_digits = std::to_string(short_chain_num_entries).length();
+    int long_chain_num_entries_num_digits = std::to_string(long_chain_num_entries).length();
+
+    // loop over entries and copy over to output tree
+    if (verbose >= 1) std::cout << "Start looping over " << long_chain_num_entries << " entries..." << std::endl;
+    saved_time = stopwatch.now();
+    while (long_chain_reader.Next()) {
+        // get current entry in the long chain
+        Long64_t i_long_chain = long_chain_reader.GetCurrentEntry();
+
+        // search for corresponding event in the short chain
+        Long64_t i_short_chain = short_chain->GetEntryNumberWithIndex(*long_chain_run, *long_chain_event_number);
+        
+        if (i_short_chain != -1){ // found match
+            num_match++; 
+            out_tree_current_num_entries++;
+
+            short_chain_reader.SetEntry(i_short_chain);
+            //std::cout << std::format("{} {} {} {}", *long_chain_run, **short_chain_run, *long_chain_event_number, **short_chain_event_number)<< std::endl;
+
+            // read all branches for this entry
+            long_chain->GetEntry(i_long_chain); 
+            short_chain->GetEntry(i_short_chain);
+            
+            // save to output trees
+            Int_t out_long_tree_num_byte_write = out_long_tree->Fill();
+            Int_t out_short_tree_num_byte_write = out_short_tree->Fill();
+            if (out_tree_current_num_entries == 1){ // first entry
+                out_tree_current_size += get_tree_byte_size(out_long_tree);
+                out_tree_current_size += get_tree_byte_size(out_short_tree);
+            } else {
+                if (out_long_tree_num_byte_write > 0) out_tree_current_size += out_long_tree_num_byte_write; 
+                if (out_short_tree_num_byte_write > 0) out_tree_current_size += out_short_tree_num_byte_write; 
+            } 
+
+            // printing
+            if ((verbose >= 1) && (((num_match == 5) && (i_long_chain+1 < print_every_entries)) || ((i_long_chain+1) % print_every_entries) == 0)){
+                current_time = stopwatch.now();
+                elapsed_time = current_time - saved_time;
+                // tqdm style
+                //std::cout << std::format("{:06.02f}", elapsed_time.count());
+                std::cout << "#process: " << std::setw(long_chain_num_entries_num_digits) << std::left << i_long_chain+1 << "/" << long_chain_num_entries;
+                std::cout << std::setw(11) << std::left << std::format(" ({:.03f}%)", Double_t(i_long_chain+1)/long_chain_num_entries * 100);
+                std::cout << "  #match: " << std::setw(short_chain_num_entries_num_digits) << std::right << num_match; 
+                std::cout << std::format(" ({:7.03f}%/A, {:7.03f}%/B)", Double_t(num_match)/datasetA_num_entries * 100, Double_t(num_match)/datasetB_num_entries * 100);
+                std::cout << std::format("   [{:%T}<{:%T}, {:10.02f}it/s, {:10.05f}ms/it]", elapsed_time, elapsed_time/(i_long_chain+1) * long_chain_num_entries - elapsed_time, Double_t(i_long_chain+1)/elapsed_time.count(), elapsed_time.count()/(i_long_chain+1)*1000);
+                std::cout << std::endl;
+                //std::cout << std::format("Processing entry {} of {} entries ({:03.02f}%) Elapsed Time: {:%T} Average time per entry: {:06.02f}% Projected Remaining Time: {:%T}", i_long_chain+1, long_chain_num_entries, double(i_long_chain+1)/long_chain_num_entries * 100, elapsed_time, elapsed_time.count(), elapsed_time/(i_long_chain+1) * long_chain_num_entries - elapsed_time) << std::endl;
+            }
+        } // if match 
+    } // loop long chain
+
+    current_time = stopwatch.now();
+    elapsed_time = current_time - saved_time;
+    if (verbose >= 1) std::cout << "Finishing looping over " << long_chain_num_entries << " entries..." << std::endl;
+
+    // write to file
+    //TString out_file_path = TString::Format("%s/%s_%d.root", out_directory.c_str(), out_filename_prefix.c_str(), out_file_index);
+    TString out_file_path = TString::Format("%s/%s.root", out_directory.c_str(), out_filename_prefix.c_str());
+    if (verbose >= 2) std::cout << "Saving to file " << out_file_path << std::endl;
+    TFile *out_file = TFile::Open(out_file_path.Data(), "RECREATE");
+    out_file->cd();
+    out_long_tree->Write();
+    out_short_tree->Write();
+    out_file->Close();
+
+    // print summary
+    std::cout << std::format("{:=^75}", "SUMMARY: Matching Trees") << std::endl;
+    std::cout << std::format("Total time: {:%T}", elapsed_time) << std::endl;
+    std::cout << std::format("Average time per entry: {:.05f} ms", elapsed_time.count() * 1000 / long_chain_num_entries) << std::endl;
+    std::cout << "Number of matched events: " << num_match << std::endl;
+    std::cout << TString::Format("Percent matched events from datasetA: %lld/%lld (%.03f%%)", num_match, datasetA_num_entries, Double_t(num_match)/datasetA_num_entries * 100) << std::endl;
+    std::cout << TString::Format("Percent matched events from datasetB: %lld/%lld (%.03f%%)", num_match, datasetB_num_entries, Double_t(num_match)/datasetB_num_entries * 100) << std::endl;
+    std::cout << std::format("{:=^75}", "") << std::endl;
+}
+
+void match_trees_merged() { 
+    if (verbose >= 2) std::cout << "Start setting up..." << std::endl;
+    // stop watch
+    std::chrono::steady_clock stopwatch;
+    auto saved_time = stopwatch.now();
+    auto current_time = stopwatch.now();
+    std::chrono::duration<double> elapsed_time = current_time - saved_time;
+
+    // setup chains
+    if (verbose >= 2) std::cout << "Start building input chains..." << std::endl;
+    int short_chain_num_files = 0;
+    int long_chain_num_files = 0;
+    TChain *short_chain = build_chain(datasetA_filelist_filename, short_chain_num_files);
+    TChain *long_chain = build_chain(datasetB_filelist_filename, long_chain_num_files);
+    std::string short_chain_branchname_prefix = datasetA_branchname_prefix;
+    std::string long_chain_branchname_prefix = datasetB_branchname_prefix;
+    Long64_t short_chain_num_entries = short_chain->GetEntries();
+    Long64_t long_chain_num_entries = long_chain->GetEntries();
+    Long64_t datasetA_num_entries = short_chain_num_entries;
+    Long64_t datasetB_num_entries = long_chain_num_entries;
+    if (verbose >= 2) std::cout << "Finish building input chains..." << std::endl;
+
+    // swap chain if first chain is longer than the second chain
+    if (short_chain_num_entries > long_chain_num_entries) {
+        if (verbose >= 3) std::cout << "Swapping input chains" << std::endl;
+        std::swap(short_chain, long_chain);
+        std::swap(short_chain_branchname_prefix, long_chain_branchname_prefix);
+        std::swap(short_chain_num_files, long_chain_num_files);
+        std::swap(short_chain_num_entries, long_chain_num_entries);
+        std::swap(datasetA_num_entries, datasetB_num_entries);
+    }
+
+    // set active branches
+    short_chain->SetBranchStatus("*", false);
+    long_chain->SetBranchStatus("*", false);
+
+    // short_chain->SetBranchStatus("nJet", true);
+    // long_chain->SetBranchStatus("nJet", true);
+
+    // short_chain->SetBranchStatus("MET_pt", true);
+    // long_chain->SetBranchStatus("MET_pt", true);
+
+    // short_chain->SetBranchStatus("Jet_pt", true);
+    // long_chain->SetBranchStatus("Jet_pt", true);
+
+    // short_chain->SetBranchStatus("SV_chi2", true);
+    // long_chain->SetBranchStatus("SV_chi2", true);
+
+    short_chain->SetBranchStatus("*", true);
+    long_chain->SetBranchStatus("*", true);
+
+    // set run and event branch to active since these are used for indexing
+    short_chain->SetBranchStatus("run", true); 
+    short_chain->SetBranchStatus("event", true); 
+    long_chain->SetBranchStatus("run", true); 
+    long_chain->SetBranchStatus("event", true); 
+    if (verbose >= 2) std::cout << "Finish setting up..." << std::endl;
+
+    // build lookup indices for short chain
+    if (verbose >= 1) std::cout << "Start building lookup indices with " << short_chain->GetEntries() << " entries..." << std::endl;
+    saved_time = stopwatch.now();
+    short_chain->BuildIndex("run", "event");
+    current_time = stopwatch.now();
+    elapsed_time = current_time - saved_time;
+    if (verbose >= 1) std::cout << "Finish building lookup indices with " << short_chain_num_entries << " entries..." << std::endl;
+    // print summary
+    std::cout << std::format("{:=^75}", "SUMMARY: Building Lookup indices") << std::endl;
+    std::cout << std::format("Total time: {:%T}", elapsed_time) << std::endl;
+    std::cout << std::format("Average time per entry: {:.05f} ms", elapsed_time.count() * 1000 / short_chain_num_entries) << std::endl;
+    std::cout << std::format("{:=^75}", "") << std::endl;
 
     // set up output directory
     if (verbose >= 3) std::cout << "Start preparing output directory..." << std::endl;
@@ -160,8 +352,8 @@ int main(){
     if (verbose >= 2) std::cout << "Finish building treereader..." << std::endl;
 
     TTreeReader short_chain_reader(short_chain);
-    TTreeReaderValue<UInt_t> *short_chain_run = new TTreeReaderValue<UInt_t>(short_chain_reader, "run");
-    TTreeReaderValue<ULong64_t> *short_chain_event_number = new TTreeReaderValue<ULong64_t>(short_chain_reader, "event");
+    //TTreeReaderValue<UInt_t> *short_chain_run = new TTreeReaderValue<UInt_t>(short_chain_reader, "run");
+    //TTreeReaderValue<ULong64_t> *short_chain_event_number = new TTreeReaderValue<ULong64_t>(short_chain_reader, "event");
 
     // build out_tree_base holding branches
     if (verbose >= 2) std::cout << "Start building output tree..." << std::endl;
@@ -187,14 +379,10 @@ int main(){
     Long64_t out_tree_current_num_entries = 0;
     Long64_t out_tree_current_size = 0;
     bool is_last_entry = !long_chain_reader.Next();
-    Long64_t print_every_entries = Long64_t(print_every_percent * long_chain_num_entries / 100);
 
+    Long64_t print_every_entries = Long64_t(print_every_percent * long_chain_num_entries / 100);
     int short_chain_num_entries_num_digits = std::to_string(short_chain_num_entries).length();
     int long_chain_num_entries_num_digits = std::to_string(long_chain_num_entries).length();
-
-    //std::cout << long_chain_run.Get() << short_chain_run->Get() << std::endl;
-
-    //std::cout << get_tree_byte_size(out_tree) << std::endl; 
 
     // loop over entries and copy over to output tree
     if (verbose >= 1) std::cout << "Start looping over " << long_chain_num_entries << " entries..." << std::endl;
@@ -258,10 +446,10 @@ int main(){
             // tqdm style
             //std::cout << std::format("{:06.02f}", elapsed_time.count());
             std::cout << "#process: " << std::setw(long_chain_num_entries_num_digits) << std::left << i_long_chain+1 << "/" << long_chain_num_entries;
-            std::cout << std::setw(11) << std::left << fmt::format(" ({:.03f}%)", Double_t(i_long_chain+1)/long_chain_num_entries * 100);
+            std::cout << std::setw(11) << std::left << std::format(" ({:.03f}%)", Double_t(i_long_chain+1)/long_chain_num_entries * 100);
             std::cout << "  #match: " << std::setw(short_chain_num_entries_num_digits) << std::right << num_match; 
-            std::cout << fmt::format(" ({:7.03f}%/A, {:7.03f}%/B)", Double_t(num_match)/datasetA_num_entries * 100, Double_t(num_match)/datasetB_num_entries * 100);
-            std::cout << fmt::format("   [{:%T}<{:%T}, {:10.02f}it/s, {:10.05f}ms/it]", elapsed_time, elapsed_time/(i_long_chain+1) * long_chain_num_entries - elapsed_time, Double_t(i_long_chain+1)/elapsed_time.count(), elapsed_time.count()/(i_long_chain+1)*1000);
+            std::cout << std::format(" ({:7.03f}%/A, {:7.03f}%/B)", Double_t(num_match)/datasetA_num_entries * 100, Double_t(num_match)/datasetB_num_entries * 100);
+            std::cout << std::format("   [{:%T}<{:%T}, {:10.02f}it/s, {:10.05f}ms/it]", elapsed_time, elapsed_time/(i_long_chain+1) * long_chain_num_entries - elapsed_time, Double_t(i_long_chain+1)/elapsed_time.count(), elapsed_time.count()/(i_long_chain+1)*1000);
             std::cout << std::endl;
             //std::cout << std::format("Processing entry {} of {} entries ({:03.02f}%) Elapsed Time: {:%T} Average time per entry: {:06.02f}% Projected Remaining Time: {:%T}", i_long_chain+1, long_chain_num_entries, double(i_long_chain+1)/long_chain_num_entries * 100, elapsed_time, elapsed_time.count(), elapsed_time/(i_long_chain+1) * long_chain_num_entries - elapsed_time) << std::endl;
         }
@@ -294,32 +482,29 @@ int main(){
     if (verbose >= 1) std::cout << "Finishing looping over " << long_chain_num_entries << " entries..." << std::endl;
     
     // print summary
-    std::cout << fmt::format("{:=^75}", "SUMMARY: Merging Trees") << std::endl;
-    std::cout << fmt::format("Total time: {:%T}", elapsed_time) << std::endl;
-    std::cout << fmt::format("Average time per entry: {:.05f} ms", elapsed_time.count() * 1000 / long_chain_num_entries) << std::endl;
+    std::cout << std::format("{:=^75}", "SUMMARY: Merging Trees") << std::endl;
+    std::cout << std::format("Total time: {:%T}", elapsed_time) << std::endl;
+    std::cout << std::format("Average time per entry: {:.05f} ms", elapsed_time.count() * 1000 / long_chain_num_entries) << std::endl;
     std::cout << "Number of matched events: " << num_match << std::endl;
     std::cout << TString::Format("Percent matched events from datasetA: %lld/%lld (%.03f%%)", num_match, datasetA_num_entries, Double_t(num_match)/datasetA_num_entries * 100) << std::endl;
     std::cout << TString::Format("Percent matched events from datasetB: %lld/%lld (%.03f%%)", num_match, datasetB_num_entries, Double_t(num_match)/datasetB_num_entries * 100) << std::endl;
-    std::cout << fmt::format("{:=^75}", "") << std::endl;
+    std::cout << std::format("{:=^75}", "") << std::endl;
 
     // delete out_tree;
     // delete out_tree_base;
     // delete short_chain;
     // delete long_chain;
-
-    return 0;
 }
 
 // helper function implementation
 
-TChain* build_chain(std::string filelist_filename){
+TChain* build_chain(std::string filelist_filename, int &num_files){
     std::ifstream filelist_file(filelist_filename);
     std::string filename;
     TChain* chain = new TChain("Events");
-    //num_files
     while (std::getline(filelist_file, filename)){
         chain -> AddFile(filename.c_str());
-        //num_files++;
+        num_files++;
     }
     return chain;
 }
